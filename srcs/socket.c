@@ -1,21 +1,29 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   error.h                                            :+:      :+:    :+:   */
+/*   socket.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/12/16 10:46:15 by matheme           #+#    #+#             */
-/*   Updated: 2020/12/18 12:35:56 by maxence          ###   ########lyon.fr   */
+/*   Created: 2021/01/21 14:16:14 by maxence           #+#    #+#             */
+/*   Updated: 2021/01/21 15:07:52 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef ERROR_H
-# define ERROR_H
+#include "ft_ping.h"
 
-#define E_USAGE			1
-#define E_UNKNOWN_HOST	2
-#define E_SOCKET		3
-#define E_SEND_SOCKET   4
+int raw_socket() {
 
-#endif
+    static int sockfd = 0;
+    int ttl = 65;
+
+    if (sockfd == 0)
+    {
+        // create a raw socket to send a ICMP message
+        if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0)
+            return (E_SOCKET);
+
+        setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
+    }
+    return (sockfd);
+}
