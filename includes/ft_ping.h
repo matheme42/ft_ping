@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 13:07:26 by matheme           #+#    #+#             */
-/*   Updated: 2021/01/21 14:54:06 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/01/22 17:42:05 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,34 +51,25 @@
 // allow the use of sqrt
 #include <math.h>
 
-// ping packet structure 
-struct ping_pkt 
-{ 
-    struct icmphdr hdr; 
-    char msg[56 - sizeof(struct icmphdr)]; 
-};
 
+# define IP_HDR_SIZE			20 // size of the ip header
+# define ICMP_HDR_SIZE			ICMP_MINLEN // size of the header of the ICMP request
+# define ICMP_PAYLOAD_SIZE		56 // size of the data of the ICMP request
+# define PACKET_SIZE			(IP_HDR_SIZE + ICMP_HDR_SIZE + ICMP_PAYLOAD_SIZE) // Global packet size
 
-struct time_ping_data
+typedef struct			s_stats
 {
-    struct timeval  start_time;
-    struct timeval  endtime;
-    int             min_time;
-    int             max_time;
-    int             avg_time;
-    long long       mdev_time;
-};
+	char				*domain_name;
+	suseconds_t			rtt_min;
+	suseconds_t			rtt_max;
+	suseconds_t			rtt_total;
+	suseconds_t			rtt_sq_total;
+	suseconds_t			start_time;
+	uint16_t			packets_recvd;
+	uint16_t			packets_send;
+	uint16_t			packets_error;
+}						t_stats;
 
-// @todo work in progress
-typedef struct  s_ping_data
-{
-    char        *hostname;
-    unsigned int packet_success;
-    unsigned int packet_failure;
-    struct time_ping_data timestats;
-}               t_ping_data;
-
-t_ping_data g_ping_data;
 
 // initialise and get the raw_socket
 int             raw_socket();
@@ -87,15 +78,20 @@ int             raw_socket();
 int             lookup_host(const char *host, struct sockaddr **sockaddr);
 
 // send packet
-struct timeval  *send_packet(int sockfd, struct sockaddr* clientaddr, const char *hostname, int seq);
+int				send_packet(const int sockfd, struct sockaddr *dest, int seq, const char *domainname);
 
 // receive packet
-void            receive_packet(const int sockfd, struct timeval sendtime, const char *hostname, int seq);
+void            receive_packet(const int sockfd, struct sockaddr *destaddr);
 
 // error
 int             error(int err, char *prog_name, char *host_name);
 
 // statistic
-void            statistic(const char *host);
+t_stats			*g_stat();
+void			statistic();
+
+
+//recupere le temps actuel
+suseconds_t		get_time(void);
 
 # endif

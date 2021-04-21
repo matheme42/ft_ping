@@ -6,81 +6,128 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/18 12:08:48 by maxence           #+#    #+#             */
-/*   Updated: 2021/01/21 15:03:32 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/01/22 21:15:16 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
 # include "ft_ping.h"
 
-static void preparemsghdr(struct msghdr	*callback)
+
+static char	*icmp_responses[] =
 {
-    struct iovec    iov;
-    struct sockaddr sin;
-    char            control[64];
-    char            databuff[84];
+	[ICMP_DEST_UNREACH]		= "Destination Unreachable",
+	[ICMP_SOURCE_QUENCH]	= "Source Quench",
+	[ICMP_REDIRECT]			= "Redirect (change route)",
+	[ICMP_ECHO]				= "Echo Request",
+	[ICMP_TIME_EXCEEDED]	= "Time to live exceeded",
+	[ICMP_PARAMETERPROB]	= "Parameter Problem",
+	[ICMP_TIMESTAMP]		= "Timestamp Request",
+	[ICMP_TIMESTAMPREPLY]	= "Timestamp Reply",
+	[ICMP_INFO_REQUEST]		= "Information Request",
+	[ICMP_INFO_REPLY]		= "Information Reply",
+	[ICMP_ADDRESS]			= "Address Mask Request",
+	[ICMP_ADDRESSREPLY]		= "Address Mask Reply"
+};
 
-    bzero(&sin, sizeof(sin));
-    bzero(callback, sizeof(*callback));
-    bzero(control, sizeof(*control));
-    bzero(databuff, sizeof(*databuff));
+suseconds_t	get_time(void)
+{
+	struct timeval	curr_time;
 
-    callback->msg_control = control;
-    callback->msg_controllen = sizeof(control);
-    callback->msg_flags = 0;
-    callback->msg_iov = &iov;
-    callback->msg_iovlen = 1;
-    callback->msg_name = &sin;
-    callback->msg_namelen = sizeof(sin);
-    callback->msg_iov->iov_base = databuff;
-    callback->msg_iov->iov_len = sizeof(databuff);
+	if (gettimeofday(&curr_time, NULL) == -1)
+	{
+		dprintf(1, "failed getting time of day\n");
+		return (0);
+	}
+	return (curr_time.tv_sec * 1000000 + curr_time.tv_usec);
 }
 
-static void fill_statistic(int time)
+//   - calculates Round Trip Time in ms
+
+static suseconds_t	get_rtt(struct timeval *send_time)
 {
-    if (time < g_ping_data.timestats.min_time || g_ping_data.timestats.min_time == 0)
-        g_ping_data.timestats.min_time = time;
-    if (time > g_ping_data.timestats.max_time || g_ping_data.timestats.max_time == 0)
-        g_ping_data.timestats.max_time = time;
-
-    g_ping_data.timestats.avg_time = ((g_ping_data.timestats.avg_time * g_ping_data.packet_success) + time) / (g_ping_data.packet_success + 1);
-
-    g_ping_data.timestats.mdev_time += 0;
+	return (get_time() - send_time->tv_sec * 1000000 - send_time->tv_usec);
 }
 
-void checkpacket(void *packet)
-{
-    struct iphdr	*ip = packet;
-	struct icmphdr	*icmp = packet;
+void receive_packet(const int sockfd, struct sockaddr *destaddr);
 
-    dprintf(1, "%d\n", icmp->type);
+static void	update_rtt_stats(suseconds_t rtt, uint16_t seq)
+{
+	// if first packet init all
+	if (seq == 1)
+	{
+		g_stat()->rtt_min = rtt;
+		g_stat()->rtt_max = rtt;
+		g_stat()->rtt_total = rtt;
+		g_stat()->rtt_sq_total = rtt * rtt;
+	}
+	else
+	{
+		g_stat()->rtt_min = rtt < g_stat()->rtt_min ? rtt : g_stat()->rtt_min;
+		g_stat()->rtt_max = rtt > g_stat()->rtt_max ? rtt : g_stat()->rtt_max;
+		g_stat()->rtt_total += rtt;
+		g_stat()->rtt_sq_total += rtt * rtt;
+	}
 }
 
-void receive_packet(const int sockfd, struct timeval sendtime, const char *hostname, int seq)
+void read_packet(void *packet, const int sockfd, struct sockaddr *destaddr) {
+ 	struct iphdr	*ip = packet;
+ 	struct icmphdr	*icmp = packet + IP_HDR_SIZE;
+    char            *error_str;
+ 	char			*sender = inet_ntoa((struct in_addr){.s_addr = ip->saddr});
+ 	u_int16_t		recvd_seq = ntohs(icmp->un.echo.sequence);
+ 	suseconds_t		rtt;
+
+    if (icmp->type != ICMP_ECHOREPLY)
+	{
+		if (icmp->type == ICMP_ECHO)
+		{
+			receive_packet(sockfd, destaddr);
+			return ;
+		}
+		if (icmp->type < sizeof(icmp_responses))
+			error_str = icmp_responses[icmp->type];
+		else
+			error_str = NULL;
+		dprintf(1, "From %s icmp_seq=%hu %s\n", sender, recvd_seq, error_str);
+		g_stat()->packets_error += 1;
+	}
+    else
+    {
+    	rtt = get_rtt(packet + IP_HDR_SIZE + ICMP_HDR_SIZE + 4);
+    	dprintf(1, "%hu bytes from %s icmp_seq=%hu ttl=%hhu time=%ld.%02ld ms\n", \
+           (uint16_t)(ntohs(ip->tot_len) - IP_HDR_SIZE), \
+           sender, recvd_seq, ip->ttl, rtt / 1000l, rtt % 1000l);
+		update_rtt_stats(rtt, recvd_seq);
+		g_stat()->packets_recvd += 1;
+    }
+}
+
+void receive_packet(const int sockfd, struct sockaddr *destaddr)
 {
-    struct timeval	receivetime;
-    struct msghdr	callback;
-    unsigned int    time;
-    char            clientname[15];
-    unsigned int    byte_receive;
 
-    // prepare the callback
-    preparemsghdr(&callback);
+    char            packet[PACKET_SIZE];
+    ssize_t         recvbytes;
+	char			buffer[512];
+	struct iovec	io =
+	{
+		.iov_base = packet,
+		.iov_len = PACKET_SIZE
+	};
+	struct msghdr	msg =
+	{
+		.msg_name = destaddr,
+		.msg_namelen = sizeof(destaddr),
+		.msg_iov = &io,
+		.msg_iovlen = 1,
+		.msg_control = buffer,
+		.msg_controllen = sizeof(buffer),
+		.msg_flags = 0
+	};
 
-	// receive the packet
-	byte_receive = recvmsg(sockfd, &callback, 0);
-
-    checkpacket(callback.msg_iov);
-
-	gettimeofday(&receivetime, NULL);
-    inet_ntop (((struct sockaddr_in *)callback.msg_name)->sin_family, &((struct sockaddr_in *)callback.msg_name)->sin_addr, clientname, 15);
-
-
-	time = ((receivetime.tv_sec -  sendtime.tv_sec) * 1000000);
-    time += (receivetime.tv_usec - sendtime.tv_usec);
-
-    fill_statistic(time);    
-    g_ping_data.packet_success += 1;
-
-//	64 bytes from localhost (127.0.0.1): icmp_seq=1 ttl=64 time=0.076 ms
-	dprintf(1, "%d bytes from %s (%s): icmp_seq=%d ttl=64 time=%d.%d ms\n", byte_receive, hostname, clientname, seq, time / 1000, (time % 1000));  
+    recvbytes = recvmsg(sockfd, &msg, 0);
+    if (recvbytes < -1) {
+		return ;
+		// an error occurd. Example wrong checksum
+    }
+	read_packet(packet, sockfd, destaddr);
 }

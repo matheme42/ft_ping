@@ -6,7 +6,7 @@
 #    By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2020/11/24 13:54:31 by matheme           #+#    #+#              #
-#    Updated: 2021/01/21 14:22:57 by maxence          ###   ########lyon.fr    #
+#    Updated: 2021/04/21 12:09:00 by maxence          ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,13 +24,13 @@ INC_PATH		= includes
 HEADER			= $(INC_PATH)/error.h $(INC_PATH)/ft_ping.h
 
 # sources
-NAME_SRC		=	main.c dnslookup.c send.c receive.c error.c statistic.c socket.c
+NAME_SRC		=	main.c dnslookup.c send.c receive.c error.c socket.c statistic.c
 
 # objects
 NAME_OBJ		= $(addprefix $(OBJ_PATH)/,$(NAME_SRC:.c=.o))
 
 #compilateur + flags
-CC			=	gcc  #-g3 -fsanitize=address -g3
+CC			=	gcc #-g3 -fsanitize=address -g3
 CFLAGS		=  -Wall -Wextra -Werror
 
 #librairies

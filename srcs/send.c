@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/18 11:11:02 by maxence           #+#    #+#             */
-/*   Updated: 2021/01/21 14:55:23 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/04/21 12:11:20 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,54 +29,57 @@ static unsigned short checksum(void *b, int len)
     return result;
 }
 
-static void fill_ping_packet(struct ping_pkt *pckt, int seq)
+void sendfirst(int sendbyte, struct sockaddr *dest, const char *domainname)
 {
-	int i;
-
-	//filling packet 
-	bzero(pckt, sizeof(*pckt)); 
-		
-	pckt->hdr.type = ICMP_ECHO; 
-	pckt->hdr.un.echo.id = getpid(); 
-		
-	for ( i = 0; i < sizeof(pckt->msg)-1; i++) 
-		pckt->msg[i] = i +'0'; 
-		
-	pckt->msg[i] = '\0'; 
-	pckt->hdr.un.echo.sequence = seq;
-	pckt->hdr.checksum = checksum(pckt, sizeof(*pckt));
+    char charip[15];
+    char *ptr = (char*)&(((struct sockaddr_in *)dest)->sin_addr);
+    inet_ntop(dest->sa_family, ptr, charip, sizeof(charip));
+    dprintf(1, "PING %s (%s) %d(%d) bytes of data.\n", domainname , charip, ICMP_PAYLOAD_SIZE, PACKET_SIZE);
 }
 
 
-struct timeval *send_packet(int sockfd, struct sockaddr* clientaddr, const char *hostname, int seq)
+int send_packet(const int sockfd, struct sockaddr *dest, int seq, const char *domainname)
 {
-    int             databyte;
-    struct ping_pkt pckt;
-	char            clientname[15];
-	char            *ptr;
-    struct timeval	*sendtime;
+	char    packet[PACKET_SIZE];
 
-    ptr = ((void*)(&clientaddr->sa_data)) + 2;
+    struct iphdr *ipheader = (struct iphdr*)packet;
+    struct icmphdr *icmpheader = (struct icmphdr*)&packet[IP_HDR_SIZE];
 
 
-    // prepare the packet
-    fill_ping_packet(&pckt, seq);
-    if (!(sendtime = malloc(sizeof(*sendtime))))
-        return (NULL);
+    // IP HEADER
+    ipheader->version = 4;
+    ipheader->ihl = IP_HDR_SIZE / 4;
+    ipheader->tos = 0;
+    ipheader->tot_len = htons(PACKET_SIZE); // convert little endian to big endian
+    ipheader->ttl = 64;
+    ipheader->frag_off = htons(0);
+    ipheader->protocol = IPPROTO_ICMP; // 1 for ICMP
+    ipheader->saddr = INADDR_ANY;
+    ipheader->daddr = (unsigned int)((struct sockaddr_in *)dest)->sin_addr.s_addr;
+    ipheader->check = 0;
 
-    // send the packet
-	if ((databyte = sendto(sockfd, &pckt, sizeof(pckt), 0, clientaddr, sizeof(*clientaddr))) <= 0)
-		return (NULL);
+    // ICMP DATA
+    memset(icmpheader, 42, PACKET_SIZE - IP_HDR_SIZE); // fill with random data
+    gettimeofday((void*)&packet[IP_HDR_SIZE + ICMP_HDR_SIZE + 4], NULL);
 
-    // get the time of the day
-    gettimeofday(sendtime, NULL);
 
-    // print the first message
-    if (seq == 1)
-    {
-	    inet_ntop (clientaddr->sa_family, ptr, clientname, 15);
-	    dprintf(1, "PING %s (%s): %d data bytes\n", hostname, clientname, databyte);
+    // ICMP HEADER
+    icmpheader->type = ICMP_ECHO;
+    icmpheader->code = 0;
+    icmpheader->un.echo.id = getpid();
+    icmpheader->un.echo.sequence = htons(seq);
+    icmpheader->checksum = 0;
+    icmpheader->checksum = checksum(icmpheader, ICMP_PAYLOAD_SIZE + ICMP_HDR_SIZE);
+
+    int sendbyte = sendto(sockfd, packet, PACKET_SIZE, 0, dest, sizeof(*dest));
+    g_stat()->packets_send += 1;
+    if (sendbyte < 0) {
+        perror("ft_ping: sendto");
+        return (1);
+    }
+    if (seq == 1) {
+        sendfirst(sendbyte, dest, domainname);
     }
 
-    return (sendtime);
+    return (0);
 }

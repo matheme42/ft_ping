@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/18 15:30:37 by maxence           #+#    #+#             */
-/*   Updated: 2020/12/18 15:30:56 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/01/22 11:58:15 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ int error(int err, char *prog_name, char *host_name)
 			dprintf(2, "usage: %s host\n", prog_name);
 		break ;
 		case E_UNKNOWN_HOST:
-			dprintf(2, "%s: cannot resolve %s: Unknown host\n", prog_name, host_name);
+			dprintf(2, "%s: unknown host %s\n", prog_name, host_name);
 		break ;
 		case E_SOCKET:
 			perror(prog_name);

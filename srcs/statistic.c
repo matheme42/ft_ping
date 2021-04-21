@@ -5,33 +5,58 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/12/18 15:28:38 by maxence           #+#    #+#             */
-/*   Updated: 2020/12/18 18:46:41 by maxence          ###   ########lyon.fr   */
+/*   Created: 2021/01/22 12:47:06 by maxence           #+#    #+#             */
+/*   Updated: 2021/04/21 12:17:28 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
-# include "ft_ping.h"
+#include "ft_ping.h"
 
-void statistic(const char* host)
+t_stats *g_stat()
 {
-    unsigned int packet_lost;
-    unsigned int total_time;
-    int          average_time;
+    static t_stats *stat = NULL;
 
-    packet_lost = 0;
-    if (g_ping_data.packet_failure + g_ping_data.packet_success != 0)
-        packet_lost = (double)g_ping_data.packet_failure / ((double)g_ping_data.packet_failure + (double)g_ping_data.packet_success) * 100;
-    
-    dprintf(1, "\n--- %s ping statistics ---\n", host);
+    if (stat == NULL)
+    {
+        stat = malloc(sizeof(*stat));
+        stat->domain_name = NULL;
+        stat->packets_error = 0;
+        stat->packets_recvd = 0;
+        stat->packets_send = 0;
+        stat->rtt_max = 0;
+        stat->rtt_min = 0;
+        stat->rtt_sq_total = 0;
+        stat->rtt_total = 0;
+        stat->start_time = 0;
+    }
+    return (stat);
+}
 
-    // // 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
-    dprintf(1, "%u packets transmitted, %u received, %u%% packet lost, time 0ms\n", g_ping_data.packet_success + g_ping_data.packet_failure, g_ping_data.packet_success, packet_lost);
+void statistic()
+{
+    t_stats *stat = g_stat();
 
-    total_time = (g_ping_data.timestats.endtime.tv_sec - g_ping_data.timestats.start_time.tv_sec) * 1000000 + (g_ping_data.timestats.endtime.tv_usec - g_ping_data.timestats.start_time.tv_usec);
-    total_time /= 1000;
+    if (stat->packets_send == 0)
+        stat->packets_send = 1;
+    if (stat->packets_recvd == 0)
+        stat->packets_recvd = 1;
+    int lostpacket =  100 - (((float)stat->packets_recvd / (float)stat->packets_send) * 100);
+    int avg = stat->rtt_total / stat->packets_recvd;
+    suseconds_t mdev;
 
-    average_time = 0;
+    mdev = stat->rtt_total / stat->packets_recvd;
+	stat->rtt_sq_total /= stat->packets_recvd;
+	mdev = sqrtl(stat->rtt_sq_total - mdev * mdev);
 
-    //rtt min/avg/max/mdev = 116.040/117.522/119.005/1.521 ms
-    dprintf(1, "rtt min/avg/max/mdev = %d.%.3d/%d.%.3d/%d.%.3d/%d.%.3d %ums\n", g_ping_data.timestats.min_time / 1000,  g_ping_data.timestats.min_time % 1000 , g_ping_data.timestats.max_time / 1000, g_ping_data.timestats.max_time % 1000, g_ping_data.timestats.avg_time / 1000, g_ping_data.timestats.avg_time % 1000, abs(g_ping_data.timestats.mdev_time) / 1000, abs(g_ping_data.timestats.mdev_time) % 1000, total_time);
+    dprintf(1, "--- %s ping statistics ---\n", stat->domain_name);
+    if (stat->packets_error > 0)
+    {
+        dprintf(1, "%d packets transmitted, %d received, +%d errors, %d%% packet loss, time %ldms\n", stat->packets_send, stat->packets_recvd, stat->packets_error, lostpacket,  (get_time() - stat->start_time) / 1000);   
+    }
+    else
+    {
+        dprintf(1, "%d packets transmitted, %d received, %d%% packet loss, time %ldms\n", stat->packets_send, stat->packets_recvd, lostpacket,  (get_time() - stat->start_time) / 1000);   
+    }
+    dprintf(1, "rtt min/avg/max/mdev = %ld.%ld/%ld.%ld/%ld.%ld/%ld.%ld ms\n", stat->rtt_min / 1000l, stat->rtt_min % 1000l, avg / 1000l, avg % 1000l, stat->rtt_max / 1000l, stat->rtt_max % 1000l, mdev / 1000l, mdev % 1000l);
+    free(stat);
 }
