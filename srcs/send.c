@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/18 11:11:02 by maxence           #+#    #+#             */
-/*   Updated: 2021/04/21 12:11:20 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/05/28 15:37:24 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,10 +29,13 @@ static unsigned short checksum(void *b, int len)
     return result;
 }
 
-void sendfirst(int sendbyte, struct sockaddr *dest, const char *domainname)
+static void sendfirst(int sendbyte, struct sockaddr *dest, const char *domainname)
 {
     char charip[15];
-    char *ptr = (char*)&(((struct sockaddr_in *)dest)->sin_addr);
+    char *ptr;
+
+    ptr = (char*)&(((struct sockaddr_in *)dest)->sin_addr);
+    ft_bzero(charip, 15);
     inet_ntop(dest->sa_family, ptr, charip, sizeof(charip));
     dprintf(1, "PING %s (%s) %d(%d) bytes of data.\n", domainname , charip, ICMP_PAYLOAD_SIZE, PACKET_SIZE);
 }
@@ -44,7 +47,10 @@ int send_packet(const int sockfd, struct sockaddr *dest, int seq, const char *do
 
     struct iphdr *ipheader = (struct iphdr*)packet;
     struct icmphdr *icmpheader = (struct icmphdr*)&packet[IP_HDR_SIZE];
-
+  
+    ft_bzero(ipheader, sizeof(*ipheader));
+    ft_bzero(icmpheader, sizeof(*icmpheader));
+    ft_bzero(packet, PACKET_SIZE);
 
     // IP HEADER
     ipheader->version = 4;

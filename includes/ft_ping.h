@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 13:07:26 by matheme           #+#    #+#             */
-/*   Updated: 2021/01/22 17:42:05 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/05/28 14:27:52 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,6 +70,7 @@ typedef struct			s_stats
 	uint16_t			packets_error;
 }						t_stats;
 
+void			ft_bzero(void *ptr, int size);
 
 // initialise and get the raw_socket
 int             raw_socket();

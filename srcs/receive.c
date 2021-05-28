@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/18 12:08:48 by maxence           #+#    #+#             */
-/*   Updated: 2021/01/22 21:15:16 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/05/28 14:31:12 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -108,6 +108,10 @@ void receive_packet(const int sockfd, struct sockaddr *destaddr)
     char            packet[PACKET_SIZE];
     ssize_t         recvbytes;
 	char			buffer[512];
+
+	ft_bzero(packet, PACKET_SIZE);
+	ft_bzero(buffer, 512);
+
 	struct iovec	io =
 	{
 		.iov_base = packet,

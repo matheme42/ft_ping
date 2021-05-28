@@ -6,7 +6,7 @@
 #    By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2020/11/24 13:54:31 by matheme           #+#    #+#              #
-#    Updated: 2021/04/21 12:09:00 by maxence          ###   ########lyon.fr    #
+#    Updated: 2021/05/28 14:33:01 by maxence          ###   ########lyon.fr    #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,7 +24,7 @@ INC_PATH		= includes
 HEADER			= $(INC_PATH)/error.h $(INC_PATH)/ft_ping.h
 
 # sources
-NAME_SRC		=	main.c dnslookup.c send.c receive.c error.c socket.c statistic.c
+NAME_SRC		=	main.c dnslookup.c send.c receive.c error.c socket.c statistic.c ft_bzero.c
 
 # objects
 NAME_OBJ		= $(addprefix $(OBJ_PATH)/,$(NAME_SRC:.c=.o))
@@ -60,9 +60,6 @@ fclean: clean
 
 re: fclean all
 
-nor :
-	@printf "\n${B}[NORMINETTE $(NAME)]${N}\n\n"
-	@norminette $(SRC_PATH)/*.c $(INC_PATH)/*.h
-
-
-
+authorize : $(NAME)
+		@sudo setcap cap_net_raw=pe $(NAME)
+		@getcap $(NAME)
