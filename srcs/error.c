@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/18 15:30:37 by maxence           #+#    #+#             */
-/*   Updated: 2021/01/22 11:58:15 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/05/29 00:13:16 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@ int error(int err, char *prog_name, char *host_name)
 	switch (err)
 	{
 		case E_USAGE:
-			dprintf(2, "usage: %s host\n", prog_name);
+			usage(0);
 		break ;
 		case E_UNKNOWN_HOST:
 			dprintf(2, "%s: unknown host %s\n", prog_name, host_name);
@@ -31,4 +31,12 @@ int error(int err, char *prog_name, char *host_name)
 		break ;
 	}
 	return (EXIT_FAILURE);
+}
+
+void usage(char c)
+{
+	if (c)
+		dprintf(1, "ft_ping: option invalide -- '%c'\n", c);
+	dprintf(2, "Usage: ft_ping [-hvDaq] [-t ttl] [-c count] [-i interval] [-w deadline] [-W timeout] destination\n");
+	exit(EXIT_FAILURE);
 }

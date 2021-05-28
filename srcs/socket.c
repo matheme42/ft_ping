@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/01/21 14:16:14 by maxence           #+#    #+#             */
-/*   Updated: 2021/01/22 17:37:58 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/05/28 23:50:44 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,15 @@ int raw_socket() {
         }
 
         if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, (int[1]){1}, sizeof(int)) == -1)
+        {
+            sockfd = E_SOCKET;
+		    return (E_SOCKET);
+        }
+
+        struct timeval tv;
+        tv.tv_sec = opt['W'] ? opt['W'] : 1;
+        tv.tv_usec = 0;
+        if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) == -1)
         {
             sockfd = E_SOCKET;
 		    return (E_SOCKET);

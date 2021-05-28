@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/18 11:11:02 by maxence           #+#    #+#             */
-/*   Updated: 2021/05/28 15:37:24 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/05/28 19:15:25 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,6 @@ static void sendfirst(int sendbyte, struct sockaddr *dest, const char *domainnam
     dprintf(1, "PING %s (%s) %d(%d) bytes of data.\n", domainname , charip, ICMP_PAYLOAD_SIZE, PACKET_SIZE);
 }
 
-
 int send_packet(const int sockfd, struct sockaddr *dest, int seq, const char *domainname)
 {
 	char    packet[PACKET_SIZE];
@@ -57,7 +56,7 @@ int send_packet(const int sockfd, struct sockaddr *dest, int seq, const char *do
     ipheader->ihl = IP_HDR_SIZE / 4;
     ipheader->tos = 0;
     ipheader->tot_len = htons(PACKET_SIZE); // convert little endian to big endian
-    ipheader->ttl = 64;
+    ipheader->ttl = (opt['t']) ? opt['t'] : 64;
     ipheader->frag_off = htons(0);
     ipheader->protocol = IPPROTO_ICMP; // 1 for ICMP
     ipheader->saddr = INADDR_ANY;
@@ -65,9 +64,8 @@ int send_packet(const int sockfd, struct sockaddr *dest, int seq, const char *do
     ipheader->check = 0;
 
     // ICMP DATA
-    memset(icmpheader, 42, PACKET_SIZE - IP_HDR_SIZE); // fill with random data
+    ft_memset(icmpheader, 42, PACKET_SIZE - IP_HDR_SIZE); // fill with random data
     gettimeofday((void*)&packet[IP_HDR_SIZE + ICMP_HDR_SIZE + 4], NULL);
-
 
     // ICMP HEADER
     icmpheader->type = ICMP_ECHO;
@@ -83,9 +81,8 @@ int send_packet(const int sockfd, struct sockaddr *dest, int seq, const char *do
         perror("ft_ping: sendto");
         return (1);
     }
-    if (seq == 1) {
+    if (seq == 1)
         sendfirst(sendbyte, dest, domainname);
-    }
 
     return (0);
 }

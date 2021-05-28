@@ -6,7 +6,7 @@
 /*   By: maxence <maxence@student.42lyon.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/11 13:07:26 by matheme           #+#    #+#             */
-/*   Updated: 2021/05/28 14:27:52 by maxence          ###   ########lyon.fr   */
+/*   Updated: 2021/05/29 00:13:09 by maxence          ###   ########lyon.fr   */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,11 @@
 # define ICMP_PAYLOAD_SIZE		56 // size of the data of the ICMP request
 # define PACKET_SIZE			(IP_HDR_SIZE + ICMP_HDR_SIZE + ICMP_PAYLOAD_SIZE) // Global packet size
 
+# define LIST_OPTION "hvctiWwaDq"
+# define LIST_COMPLEXE_OPTION "ctiWw"
+
+typedef int option[128];
+
 typedef struct			s_stats
 {
 	char				*domain_name;
@@ -70,7 +75,12 @@ typedef struct			s_stats
 	uint16_t			packets_error;
 }						t_stats;
 
+extern 	option			opt;
+
 void			ft_bzero(void *ptr, int size);
+void			*ft_memset(void *b, int c, size_t len);
+int				ft_atoi(const char *str);
+char			*ft_strchr(const char *s, int c);
 
 // initialise and get the raw_socket
 int             raw_socket();
@@ -86,11 +96,12 @@ void            receive_packet(const int sockfd, struct sockaddr *destaddr);
 
 // error
 int             error(int err, char *prog_name, char *host_name);
+void			usage(char c);
 
 // statistic
 t_stats			*g_stat();
 void			statistic();
-
+char			**get_option(int ac, char **av, option opt);
 
 //recupere le temps actuel
 suseconds_t		get_time(void);
